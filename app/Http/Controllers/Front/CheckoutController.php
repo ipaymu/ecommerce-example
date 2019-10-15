@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Front;
 
 use App\OrderItems;
-// use Cartalyst\Stripe\Laravel\Facades\Stripe;
+use Cartalyst\Stripe\Laravel\Facades\Stripe;
 use Gloudemans\Shoppingcart\Facades\Cart;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -27,10 +27,6 @@ class CheckoutController extends Controller
         $contents = Cart::instance('default')->content()->map(function($item) {
             return $item->model->name . ' ' . $item->qty;
         })->values()->toJson();
-        // $test = Cart::instance('default')->content();
-        // session()->flush();
-        // dd(Cart::content());
-
 
         try { 
 
@@ -53,6 +49,7 @@ class CheckoutController extends Controller
                 ]);
 
             }
+            
 
 
             $product = array();
@@ -73,7 +70,6 @@ class CheckoutController extends Controller
             }
             
             // iPaymu
-
             $url = 'http://sandbox.ipaymu.com/payment';  // URL Payment iPaymu           
             $params = array(   // Prepare Parameters            
                 'key'      => env('API_KEY'), // API Key Merchant / Penjual
@@ -82,9 +78,9 @@ class CheckoutController extends Controller
                 'price'    => $prices, // Total Harga
                 'quantity' => $quantity,
                 'comments' => $comments, // Optional
-                'ureturn'  => 'http://websiteanda.com/return.php?q=return',
-                'unotify'  => 'http://websiteanda.com/notify.php',
-                'ucancel'  => 'http://websiteanda.com/cancel.php',
+                'ureturn'  => 'http://localhost:8000?q=return',
+                'unotify'  => 'http://localhost:8000/notify.php',
+                'ucancel'  => 'http://localhost:8000/cancel.php',
                 'format'   => 'json', // Format: xml atau json. Default: xml
                 
                 // COD
@@ -95,7 +91,7 @@ class CheckoutController extends Controller
                 );
             
             $params_string = http_build_query($params);
-
+            
 
             //open connection
             $ch = curl_init();
@@ -112,24 +108,18 @@ class CheckoutController extends Controller
             if ( $request === false ) {
                 echo 'Curl Error: ' . curl_error($ch);
             } else {
-              
-                Cart::destroy();
-
                 $result = json_decode($request, true);
-                if( isset($result['url']) ){
-                    header('location: '. $result['url']);
-                }
-                else {
-                    echo "Error ". $result['Status'] .":". $result['Keterangan'];
-                }
             }
-            
             //close connection
             curl_close($ch);
-            exit;
-
-            // Success
-            return redirect()->back()->with('msg','Success Thank you');
+            // exit;
+            Cart::destroy();
+            // Successr
+            if(isset($result['url'])){
+                return redirect($result['url']);
+            }else{
+                return response()->json(['status' => $result['Status'],'message' => $result['Keterangan'] ]);
+            }
 
         } catch (Exception $e) {
 
